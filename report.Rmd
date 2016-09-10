@@ -1,0 +1,220 @@
+---
+title: "Piperacillin TDM Summary"
+output:
+  word_document:
+    fig_height: 6
+    fig_width: 8
+---
+
+````{r, echo=FALSE}
+setwd(dir)
+#reference_docx: mystyles.docx
+#Custome ggplot2 theme for the Word document
+theme_bw2 <- theme_set(theme_bw(base_size = 16))
+theme_bw2 <- theme_update(plot.margin = unit(c(0.5,0.5,0.5,0.5), "lines"),
+													axis.title.x=element_text(size = 16, vjust = 0),
+													axis.title.y=element_text(size = 16, vjust = 0, angle = 90),
+													strip.text.x=element_text(size = 14),
+													strip.text.y=element_text(size = 14, angle = 90),
+                          legend.direction = "vertical",
+                         	legend.position = "bottom",
+                         	legend.box = "horizontal")
+````
+  
+# `r paste(paste(input$FNAME,input$LNAME,sep=" "),paste("(URN: ",input$URN,")",sep=""),sep=" ")`
+****
+  
+## Patient and Previous Dosing Details
+
+``` {r, echo=FALSE, warning=FALSE}
+#Calculate AGE
+AGE <- round(as.double(difftime(input$DDATE,input$BDATE))/365, digits = 1)
+#Assign labels to "SEX"
+SEX <- NA
+if (input$SEX == 1) {SEX <- "Male"}
+if (input$SEX == 2) {SEX <- "Female"}
+#Find individual's value for CRCL
+CRCL <- round(rOBS.data$CRCL[1], digits = 1)
+#Assign labels to "PFREQ"
+PFREQ <- NA
+if (input$PFREQ == 1) {PFREQ <- "4-hourly"}
+if (input$PFREQ == 2) {PFREQ <- "6-hourly"}
+if (input$PFREQ == 3) {PFREQ <- "8-hourly"}
+#Assign labels to "NPDOSE"
+NPDOSE <- NA
+if (input$NPDOSE == 1) {NPDOSE <- "No previous doses, this was the first dose"}
+if (input$NPDOSE == 2) {NPDOSE <- "1"}
+if (input$NPDOSE == 3) {NPDOSE <- "2"}
+if (input$NPDOSE == 4) {NPDOSE <- "3 or more previous doses (at steady state"}
+#Assign labels to "PCONC" and "PTIME"
+if (input$NCONC == 1) {
+  PCONC1 <- input$PCONC1
+  PTIME1 <- input$PTIME1
+  PCONC2 <- NA
+  PTIME2 <- NA
+  PCONC3 <- NA
+  PTIME3 <- NA
+  PCONC4 <- NA
+  PTIME4 <- NA
+}
+if (input$NCONC == 2) {
+  PCONC1 <- input$PCONC1
+  PTIME1 <- input$PTIME1
+  PCONC2 <- input$PCONC2
+  PTIME2 <- input$PTIME2
+  PCONC3 <- NA
+  PTIME3 <- NA
+  PCONC4 <- NA
+  PTIME4 <- NA
+}
+if (input$NCONC == 3) {
+  PCONC1 <- input$PCONC1
+  PTIME1 <- input$PTIME1
+  PCONC2 <- input$PCONC2
+  PTIME2 <- input$PTIME2
+  PCONC3 <- input$PCONC3
+  PTIME3 <- input$PTIME3
+  PCONC4 <- NA
+  PTIME4 <- NA
+}
+if (input$NCONC == 4) {
+  PCONC1 <- input$PCONC1
+  PTIME1 <- input$PTIME1
+  PCONC2 <- input$PCONC2
+  PTIME2 <- input$PTIME2
+  PCONC3 <- input$PCONC3
+  PTIME3 <- input$PTIME3
+  PCONC4 <- input$PCONC4
+  PTIME4 <- input$PTIME4
+}
+```
+  
+**Characteristics**                   | **Value**  
+------------------------------------- | ----------------------------------------  
+Age (years)                           | `r AGE`  
+Weight (kg)                           | `r input$WT`  
+Gender                                | `r SEX`  
+Serum Creatinine (µmol/L)             | `r input$SECR`  
+Creatinine Clearance (mL/min)         | `r CRCL`  
+
+**Prescribed Dosing Information**     | **Value**  
+------------------------------------- | ----------------------------------------  
+Dose Amount (mg)                      | `r input$PDOSE`  
+Dose Frequency (hours)                | `r PFREQ`  
+Infusion Duration (hours)             | `r input$PINFD`  
+Number of Previous Doses              | `r NPDOSE`  
+
+**Concentration (mg/L)**              | **Time after Infusion Started (hours)**   
+------------------------------------- | ----------------------------------------    
+1: `r PCONC1`                         | `r PTIME1`    
+2: `r PCONC2`                         | `r PTIME2`    
+3: `r PCONC3`                         | `r PTIME3`    
+4: `r PCONC4`                         | `r PTIME4`    
+
+  
+## Individual Pharmacokinetic Parameters
+
+``` {r, echo=FALSE, warning=FALSE}
+#Individual estimate for CL
+iCOVCRCL <- head(rOBS.data$CL,1)
+CLi <- round(rBAYES.data$par[1] + iCOVCRCL, digits = 1)
+#Individual estimate for V
+iCOVWT <- head(rOBS.data$V,1)
+Vi <- round(rBAYES.data$par[2] + iCOVWT, digits = 1)
+#Confidence intervals
+#Calculate standard errors for individual parameter estimates
+#Assign the R matrix to the Hessian returned by optim
+Rmatrix <- rBAYES.data$hessian
+#Calculate the variance-covariance matrix
+VCmatrix <- solve(Rmatrix)
+#Calculate the parameter standard errors
+se.par <- sqrt(diag(VCmatrix))
+#Calculate parameter standard errors as a percentage (CL, V)
+ERR.CL <- rnorm(n, mean=rBAYES.data$par[1], sd=se.par[1])
+ERR.CL <- ERR.CL + iCOVCRCL
+CL.low <- round(quantile(ERR.CL, probs=0.025), digits = 1)
+CL.hi <- round(quantile(ERR.CL, probs=0.975), digits = 1)
+ERR.V <- rnorm(n, mean=rBAYES.data$par[2], sd=se.par[2])
+ERR.V <- ERR.V + iCOVWT
+V.low <- round(quantile(ERR.V, probs=0.025), digits = 1)
+V.hi <- round(quantile(ERR.V, probs=0.975), digits = 1)
+#Define individual's estimate for CL (95% CI)
+CLfit <- paste(CLi," (",CL.low," - ",CL.hi,")",sep="")
+#Define individual's estimate for V (95% CI)
+Vfit <- paste(Vi," (",V.low," - ",V.hi,")",sep="")
+```
+    
+**Estimated Parameters**                              | **Value (95% CI)**  
+----------------------------------------------------- | -------------------
+Clearance (L/hour)                                    | `r CLfit`  
+Volume of Distribution (L)                            | `r Vfit`  
+Time above MIC for Sampled Dose (%)                   | `r rMIC.data1$Value[1]`  
+
+  
+``` {r, echo=FALSE, warning=FALSE}
+#Plot
+plotobj1 <- NULL
+plotobj1 <- ggplot(rFIT.data)
+plotobj1 <- plotobj1 + stat_summary(aes(x = TIME, y = IPRE), data = rCI.data1, geom = "ribbon", fun.ymin = CI95lo, fun.ymax = CI95hi, alpha = 0.2)
+plotobj1 <- plotobj1 + geom_line(aes(x = TIME, y = IPRE), size = 1, colour = "steelblue3")  #Blue line = bayes estimated
+plotobj1 <- plotobj1 + geom_line(aes(x = TIME, y = IPRE), data = rSIM.data1, size = 1, colour = "firebrick3", linetype = "longdash")  #Red line = simulated
+#Set up a labelled dashed-line representing the MIC depending on input
+#Had to set it up like this because having the SMIC1 object in geom_hline wasn't working
+if (input$MIC == 1) {
+plotobj1 <- plotobj1 + geom_hline(aes(yintercept = 0.25), linetype = "dashed", colour = "black")
+}
+if (input$MIC == 2) {
+plotobj1 <- plotobj1 + geom_hline(aes(yintercept = 0.5), linetype = "dashed", colour = "black")
+}
+if (input$MIC == 3) {
+plotobj1 <- plotobj1 + geom_hline(aes(yintercept = 1), linetype = "dashed", colour = "black")
+}
+if (input$MIC == 4) {
+plotobj1 <- plotobj1 + geom_hline(aes(yintercept = 2), linetype = "dashed", colour = "black")
+}
+if (input$MIC == 5) {
+plotobj1 <- plotobj1 + geom_hline(aes(yintercept = 4), linetype = "dashed", colour = "black")
+}
+if (input$MIC == 6) {
+plotobj1 <- plotobj1 + geom_hline(aes(yintercept = 8), linetype = "dashed", colour = "black")
+}
+if (input$MIC == 7) {
+plotobj1 <- plotobj1 + geom_hline(aes(yintercept = 16), linetype = "dashed", colour = "black")
+}
+if (input$MIC == 8) {
+plotobj1 <- plotobj1 + geom_hline(aes(yintercept = 32), linetype = "dashed", colour = "black")
+}
+if (input$MIC == 9) {
+plotobj1 <- plotobj1 + geom_hline(aes(yintercept = 64), linetype = "dashed", colour = "black")
+}
+plotobj1 <- plotobj1 + geom_point(aes(x = TIME, y = DV), size = 4)  #Black circles = observed data used to estimate
+plotobj1 <- plotobj1 + scale_x_continuous("\nTime (hours)")
+plotobj1 <- plotobj1 + scale_y_continuous("Piperacillin Concentration (mg/L)\n")
+print(plotobj1)
+```
+  
+## Recommended Dosing Regimen   
+  
+```{r, echo=FALSE, warning=FALSE}
+SFREQ1 <- NA
+if (input$SFREQ1 == 1) {SFREQ1 <- "4-hourly"}
+if (input$SFREQ1 == 2) {SFREQ1 <- "6-hourly"}
+if (input$SFREQ1 == 3) {SFREQ1 <- "8-hourly"}
+```
+  
+**New Dosing Information**                           | **Value**  
+---------------------------------------------------- | ---------------------
+Dose Amount (mg)                                     | `r input$SDOSE1`  
+Dose Frequency (hours)                               | `r SFREQ1`  
+Infusion Duration (hours)                            | `r input$SINFD1`  
+
+**Predictions**                                      | **Value (95% CI)**  
+---------------------------------------------------- | ---------------------
+Time above MIC for Next 3 Doses (%)                  | `r rMIC.data1$Value[2]`  
+
+  
+> *[Type your overall dosing recommendations here]*  
+  
+****
+  
+**Prepared by:** `r input$PHARMI` (Pharmacist) **Date:** `r format(Sys.Date(), "%d-%m-%Y")`
