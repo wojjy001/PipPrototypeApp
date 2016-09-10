@@ -16,7 +16,7 @@ library(rmarkdown)  #Generate report (Word document)
 #pandocdir <- "C:/Program Files/RStudio/bin/pandoc"	#Directory for pancdoc (writing to word document)
 
 #Directories on Mac
-dir <- "/Volumes/Prosecutor/PipPrototypeApp2/"	#Directory where application files are saved
+dir <- "/Volumes/Prosecutor/PipPrototypeApp/"	#Directory where application files are saved
 pandocdir <- "/Applications/RStudio.app/Contents/MacOS/pandoc"	#Directory for pancdoc (writing to word document)
 
 #-------------------------------------------------------------------------------------
